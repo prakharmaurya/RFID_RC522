@@ -17,6 +17,7 @@
 
 #define RST_PIN 9 // Configurable, see typical pin layout above
 #define SS_PIN 10 // Configurable, see typical pin layout above
+#define arduReset 8
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
 
@@ -31,6 +32,10 @@ bool isNewCard = true;
  */
 void setup()
 {
+    digitalWrite(arduReset, HIGH);
+    delay(200);
+    pinMode(arduReset, OUTPUT);
+    delay(200);
     Serial.begin(9600); // Initialize serial communications with the PC
     while (!Serial)
     { // Do nothing if no serial port is opened
@@ -77,7 +82,6 @@ void setup()
  */
 void loop()
 {
-
     // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
     if (!mfrc522.PICC_IsNewCardPresent())
         return;
@@ -162,6 +166,7 @@ void read_data_from_block_addr(MFRC522 &mfrc522, byte index)
     {
         Serial.print(F("PCD_Authenticate() failed: "));
         Serial.println(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
         return;
     }
 
@@ -174,6 +179,8 @@ void read_data_from_block_addr(MFRC522 &mfrc522, byte index)
     {
         Serial.print(F("MIFARE_Read() failed: "));
         Serial.print(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
+        return;
     }
     // dump_byte_array(buffer, 16);
     // Serial.println("String interpretation is :-");
@@ -193,6 +200,7 @@ void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
     {
         Serial.print(F("PCD_Authenticate() failed: "));
         Serial.println(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
         return;
     }
     byte blockAddr = get_block_addr(index);
@@ -207,6 +215,7 @@ void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
     {
         Serial.print(F("MIFARE_Write() failed: "));
         Serial.println(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
     }
     Serial.println();
 }
@@ -224,6 +233,7 @@ void check_result(byte *data, byte index)
     {
         Serial.print(F("PCD_Authenticate() failed: "));
         Serial.println(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
         return;
     }
 
@@ -233,6 +243,7 @@ void check_result(byte *data, byte index)
     {
         Serial.print(F("MIFARE_Read() failed: "));
         Serial.println(mfrc522.GetStatusCodeName(status));
+        ResetBoard();
     }
 
     Serial.println(F("Checking result..."));
@@ -254,6 +265,7 @@ void check_result(byte *data, byte index)
     {
         Serial.println(F("Failure, no match :-("));
         Serial.println(F("  perhaps the write didn't work properly..."));
+        ResetBoard();
     }
     Serial.println();
 }
@@ -297,6 +309,7 @@ String get_write_cmd_index_data(byte &index, bool &isContinue)
         Serial.print("Error-IndexError index is - ");
         Serial.println(index);
         isContinue = false;
+        ResetBoard();
         return "";
     }
     String data;
@@ -324,7 +337,7 @@ void get_int_data_from_serial(byte &serialData)
         Serial.print(F("."));
     }
     Serial.println();
-    Serial.print(F("Entered Cmd is - "));
+    Serial.print(F("Entered CMD is - "));
     Serial.println(serialData);
 }
 
@@ -350,6 +363,7 @@ byte get_block_addr(byte index)
     if (sector < 0 || sector > 62)
     {
         Serial.println(F("Entered index is wrong"));
+        ResetBoard();
         return 62;
     }
     return sector;
@@ -360,6 +374,7 @@ byte get_trailing_block(byte index)
     if (tBlock < 0 || tBlock > 63)
     {
         Serial.println(F("Entered index is wrong"));
+        ResetBoard();
         return 63;
     }
     return tBlock;
@@ -385,4 +400,11 @@ void dump_string_array(byte *buffer, byte bufferSize)
         char temp = buffer[i];
         Serial.print(temp);
     }
+}
+
+/*********** Ardunio resetter **************/
+void ResetBoard()
+{
+    Serial.print("/*Resetting*/");
+    digitalWrite(arduReset, LOW);
 }
