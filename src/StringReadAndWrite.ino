@@ -31,16 +31,13 @@ bool isNewCard = true;
  */
 void setup()
 {
-    if (isNewCard)
-    {
-        Serial.begin(9600); // Initialize serial communications with the PC
-        while (!Serial)
-        { // Do nothing if no serial port is opened
-            //(added for Arduinos based on ATMEGA32U4)
-        }
-        SPI.begin();        // Init SPI bus
-        mfrc522.PCD_Init(); // Init MFRC522 card
+    Serial.begin(9600); // Initialize serial communications with the PC
+    while (!Serial)
+    { // Do nothing if no serial port is opened
+        //(added for Arduinos based on ATMEGA32U4)
     }
+    SPI.begin();        // Init SPI bus
+    mfrc522.PCD_Init(); // Init MFRC522 card
 
     // Prepare the key (used both as key A and as key B)
     // using FFFFFFFFFFFFh which is the default at chip delivery from the factory
@@ -80,70 +77,70 @@ void setup()
  */
 void loop()
 {
-    if (isNewCard)
-    { // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
-        if (!mfrc522.PICC_IsNewCardPresent())
-            return;
 
-        // Select one of the cards
-        if (!mfrc522.PICC_ReadCardSerial())
-            return;
+    // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
+    if (!mfrc522.PICC_IsNewCardPresent())
+        return;
 
-        // Show some details of the PICC (that is: the tag/card)
-        Serial.print(F("Card UID:"));
-        dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
-        Serial.println();
-        Serial.print(F("PICC type: "));
-        MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
-        Serial.println(mfrc522.PICC_GetTypeName(piccType));
+    // Select one of the cards
+    if (!mfrc522.PICC_ReadCardSerial())
+        return;
 
-        // Check for compatibility
-        if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI && piccType != MFRC522::PICC_TYPE_MIFARE_1K && piccType != MFRC522::PICC_TYPE_MIFARE_4K)
-        {
-            Serial.println(F("This only works with MIFARE Classic cards."));
-            return;
-        }
+    // Show some details of the PICC (that is: the tag/card)
+    Serial.print(F("Card UID:"));
+    dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
+    Serial.println();
+    Serial.print(F("PICC type: "));
+    MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
+    Serial.println(mfrc522.PICC_GetTypeName(piccType));
+
+    // Check for compatibility
+    if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI && piccType != MFRC522::PICC_TYPE_MIFARE_1K && piccType != MFRC522::PICC_TYPE_MIFARE_4K)
+    {
+        Serial.println(F("This only works with MIFARE Classic cards."));
+        return;
     }
 
     // Authenticate using key A
-    Serial.println(F("Authenticating using key A..."));
+    Serial.println(F("Authenticating using key A."));
     Serial.println();
+    // Reading Data
     for (byte i = 0; i < 45; i++)
     {
         read_data_from_block_addr(mfrc522, i);
-        Serial.println();
     }
 
     // Get place index to write,
+    // get_string_data_from_serial(data);
+    // get_int_data_from_serial(index);
     byte index = -1;
-    get_int_data_from_serial(index);
-    Serial.println(index);
-
     byte block_size = 16;
-    String data = "default";
-    get_string_data_from_serial(data);
     byte dataBlock[block_size];
-    trim_data(data, dataBlock, block_size);
-
-    // Authenticate using key B
-    Serial.println(F("Authenticating again using key B..."));
-    // Write data to the block
-    write_data_to_block_addr(mfrc522, dataBlock, index);
-
-    check_result(dataBlock, index);
-
-    index = 0;
-    get_int_data_from_serial(index);
-
-    if (index == 1)
+    bool isContinue;
+    String data = get_write_cmd_index_data(index, isContinue);
+    while (isContinue)
     {
-        isNewCard = false;
-        return;
+        trim_data(data, dataBlock, block_size);
+
+        // Authenticate using key B
+        Serial.println(F("Authenticating again using key B"));
+        // Write data to the block
+        write_data_to_block_addr(mfrc522, dataBlock, index);
+
+        check_result(dataBlock, index);
+        data = get_write_cmd_index_data(index, isContinue);
     }
-    else
+
+    // Authenticate using key A
+    Serial.println(F("Authenticating using key A."));
+    Serial.println();
+    // Reading Data
+    for (byte i = 0; i < 45; i++)
     {
-        isNewCard = true;
+        read_data_from_block_addr(mfrc522, i);
     }
+
+    Serial.print("/*Halt*/");
 
     // Halt PICC
     mfrc522.PICC_HaltA();
@@ -169,19 +166,19 @@ void read_data_from_block_addr(MFRC522 &mfrc522, byte index)
     }
 
     byte blockAddr = get_block_addr(index);
-    Serial.print(F("Reading data from block "));
+    Serial.print(F("/*Block-"));
     Serial.print(blockAddr);
-    Serial.println(F(" ..."));
+    Serial.print(F(",Data-"));
     status = (MFRC522::StatusCode)mfrc522.MIFARE_Read(blockAddr, buffer, &size);
     if (status != MFRC522::STATUS_OK)
     {
         Serial.print(F("MIFARE_Read() failed: "));
-        Serial.println(mfrc522.GetStatusCodeName(status));
+        Serial.print(mfrc522.GetStatusCodeName(status));
     }
     // dump_byte_array(buffer, 16);
     // Serial.println("String interpretation is :-");
     dump_string_array(buffer, 16);
-    Serial.println();
+    Serial.println("*/");
 }
 
 void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
@@ -276,8 +273,39 @@ void get_string_data_from_serial(String &serialData)
         }
         Serial.print(".");
     }
-    Serial.println(" ");
+    Serial.println();
     Serial.println("Entered data is - " + serialData);
+}
+
+String get_write_cmd_index_data(byte &index, bool &isContinue)
+{
+    String serialData = "";
+    get_string_data_from_serial(serialData);
+    if (serialData[0] == '0')
+    {
+        isContinue = false;
+        return "";
+    }
+    else
+    {
+        isContinue = true;
+    }
+    index = (10 * (((byte)serialData[1]) - 48) + ((byte)serialData[2] - 48));
+    // Serial.println(index);
+    if (!(index >= 0 && index < 45))
+    {
+        Serial.print("Error-IndexError index is - ");
+        Serial.println(index);
+        isContinue = false;
+        return "";
+    }
+    String data;
+    for (byte i = 0; i < (sizeof(serialData) / sizeof(char)); i++)
+        if (i > 2)
+        {
+            data[i - 3] = serialData[i];
+        }
+    return data;
 }
 
 void get_int_data_from_serial(byte &serialData)
@@ -329,7 +357,7 @@ byte get_block_addr(byte index)
 byte get_trailing_block(byte index)
 {
     byte tBlock = 4 * (index / 3) + 7;
-    if (tBlock < 0 || tBlock > 62)
+    if (tBlock < 0 || tBlock > 63)
     {
         Serial.println(F("Entered index is wrong"));
         return 63;
@@ -357,5 +385,4 @@ void dump_string_array(byte *buffer, byte bufferSize)
         char temp = buffer[i];
         Serial.print(temp);
     }
-    Serial.println();
 }
