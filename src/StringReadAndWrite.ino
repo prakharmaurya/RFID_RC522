@@ -90,6 +90,7 @@ void loop()
     if (!mfrc522.PICC_ReadCardSerial())
         return;
 
+    Serial.println(F("Start0"));
     // Show some details of the PICC (that is: the tag/card)
     Serial.print(F("Card UID:"));
     dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
@@ -104,7 +105,9 @@ void loop()
         Serial.println(F("This only works with MIFARE Classic cards."));
         return;
     }
+    Serial.println(F("Done0"));
 
+    Serial.println(F("Start1"));
     // Authenticate using key A
     Serial.println(F("Authenticating using key A."));
     Serial.println();
@@ -113,7 +116,9 @@ void loop()
     {
         read_data_from_block_addr(mfrc522, i);
     }
+    Serial.println(F("Done1"));
 
+    Serial.println(F("Start2"));
     // Get place index to write,
     // get_string_data_from_serial(data);
     // get_int_data_from_serial(index);
@@ -135,6 +140,9 @@ void loop()
         data = get_write_cmd_index_data(index, isContinue);
     }
 
+    Serial.println(F("Done2"));
+
+    Serial.println(F("Start3"));
     // Authenticate using key A
     Serial.println(F("Authenticating using key A."));
     Serial.println();
@@ -143,8 +151,9 @@ void loop()
     {
         read_data_from_block_addr(mfrc522, i);
     }
+    Serial.println(F("Done3"));
 
-    Serial.print("/*Halt*/");
+    Serial.println(F("/*Halt*/"));
 
     // Halt PICC
     mfrc522.PICC_HaltA();
@@ -185,7 +194,7 @@ void read_data_from_block_addr(MFRC522 &mfrc522, byte index)
     // dump_byte_array(buffer, 16);
     // Serial.println("String interpretation is :-");
     dump_string_array(buffer, 16);
-    Serial.println("*/");
+    Serial.println(F("*/"));
 }
 
 void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
@@ -273,7 +282,7 @@ void check_result(byte *data, byte index)
 void get_string_data_from_serial(String &serialData)
 {
     // Getting new Data to write from user for write
-    Serial.print("Waiting For Data Input...");
+    Serial.print(F("Waiting For Data Input"));
     Serial.flush();
     while (1)
     {
@@ -283,7 +292,7 @@ void get_string_data_from_serial(String &serialData)
             serialData = Serial.readString();
             break;
         }
-        Serial.print(".");
+        Serial.print(F("."));
     }
     Serial.println();
     Serial.println("Entered data is - " + serialData);
@@ -306,7 +315,7 @@ String get_write_cmd_index_data(byte &index, bool &isContinue)
     // Serial.println(index);
     if (!(index >= 0 && index < 45))
     {
-        Serial.print("Error-IndexError index is - ");
+        Serial.print(F("Error-IndexError index is - "));
         Serial.println(index);
         isContinue = false;
         ResetBoard();
@@ -321,25 +330,25 @@ String get_write_cmd_index_data(byte &index, bool &isContinue)
     return data;
 }
 
-void get_int_data_from_serial(byte &serialData)
-{
-    // Getting new Data to write from user for write
-    Serial.print(F("Waiting For cmd Input..."));
-    Serial.flush();
-    while (1)
-    {
-        delay(2000);
-        if (Serial.available())
-        {
-            serialData = Serial.parseInt();
-            break;
-        }
-        Serial.print(F("."));
-    }
-    Serial.println();
-    Serial.print(F("Entered CMD is - "));
-    Serial.println(serialData);
-}
+// void get_int_data_from_serial(byte &serialData)
+// {
+//     // Getting new Data to write from user for write
+//     Serial.print(F("Waiting For cmd Input..."));
+//     Serial.flush();
+//     while (1)
+//     {
+//         delay(2000);
+//         if (Serial.available())
+//         {
+//             serialData = Serial.parseInt();
+//             break;
+//         }
+//         Serial.print(F("."));
+//     }
+//     Serial.println();
+//     Serial.print(F("Entered CMD is - "));
+//     Serial.println(serialData);
+// }
 
 void trim_data(String &stringData, byte *byteArray, byte &size)
 {
@@ -405,6 +414,6 @@ void dump_string_array(byte *buffer, byte bufferSize)
 /*********** Ardunio resetter **************/
 void ResetBoard()
 {
-    Serial.print("/*Resetting*/");
+    Serial.print(F("/*Resetting*/"));
     digitalWrite(arduReset, LOW);
 }
