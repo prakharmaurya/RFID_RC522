@@ -37,20 +37,18 @@ void setup()
     pinMode(arduReset, OUTPUT);
     delay(200);
     Serial.begin(9600); // Initialize serial communications with the PC
-    while (!Serial)
-    { // Do nothing if no serial port is opened
-        //(added for Arduinos based on ATMEGA32U4)
-    }
+    // while (!Serial)
+    // { // Do nothing if no serial port is opened
+    //     //(added for Arduinos based on ATMEGA32U4)
+    // }
     SPI.begin();        // Init SPI bus
     mfrc522.PCD_Init(); // Init MFRC522 card
-
     // Prepare the key (used both as key A and as key B)
     // using FFFFFFFFFFFFh which is the default at chip delivery from the factory
     for (byte i = 0; i < 6; i++)
     {
         key.keyByte[i] = 0xFF;
     }
-
     // Getting new A & B for sectors write
     //    Serial.print("Waiting for key less then or equal 6 char...");
     //    while(1){
@@ -73,8 +71,7 @@ void setup()
     Serial.println(F("Scan a MIFARE Classic PICC to read and write."));
     Serial.print(F("Using key (for A and B):"));
     dump_byte_array(key.keyByte, MFRC522::MF_KEY_SIZE);
-    Serial.println();
-    Serial.println(F("BEWARE: Data will be written to the PICC, in sector #1"));
+    Serial.print(F("SetupDone"));
 }
 
 /**
@@ -94,7 +91,6 @@ void loop()
     // Show some details of the PICC (that is: the tag/card)
     Serial.print(F("Card UID:"));
     dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
-    Serial.println();
     Serial.print(F("PICC type: "));
     MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
     Serial.println(mfrc522.PICC_GetTypeName(piccType));
@@ -110,7 +106,6 @@ void loop()
     Serial.println(F("Start1"));
     // Authenticate using key A
     Serial.println(F("Authenticating using key A."));
-    Serial.println();
     // Reading Data
     for (byte i = 0; i < 45; i++)
     {
@@ -145,7 +140,6 @@ void loop()
     Serial.println(F("Start3"));
     // Authenticate using key A
     Serial.println(F("Authenticating using key A."));
-    Serial.println();
     // Reading Data
     for (byte i = 0; i < 45; i++)
     {
@@ -215,7 +209,7 @@ void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
     byte blockAddr = get_block_addr(index);
     Serial.print(F("Writing data into block "));
     Serial.print(blockAddr);
-    Serial.println(F(" ..."));
+    Serial.println(F("..."));
     // dump_byte_array(dataBlock, 16);
     dump_string_array(dataBlock, 16);
     // Error
@@ -226,12 +220,11 @@ void write_data_to_block_addr(MFRC522 &mfrc522, byte *dataBlock, byte index)
         Serial.println(mfrc522.GetStatusCodeName(status));
         ResetBoard();
     }
-    Serial.println();
 }
 
 void check_result(byte *data, byte index)
 {
-    delay(1000);
+    delay(100);
     MFRC522::StatusCode status;
     byte buffer[18];
     byte size = sizeof(buffer);
@@ -276,26 +269,25 @@ void check_result(byte *data, byte index)
         Serial.println(F("  perhaps the write didn't work properly..."));
         ResetBoard();
     }
-    Serial.println();
 }
 
 void get_string_data_from_serial(String &serialData)
 {
     // Getting new Data to write from user for write
-    Serial.print(F("Waiting For Data Input"));
+    Serial.println(F("Waiting For Data Input"));
     Serial.flush();
     while (1)
     {
-        delay(4000);
+        delay(1000);
         if (Serial.available())
         {
             serialData = Serial.readString();
             break;
         }
-        Serial.print(F("."));
+        Serial.println(F("Waiting"));
     }
-    Serial.println();
-    Serial.println("Entered data is - " + serialData);
+    Serial.print(F("Entered data is - "));
+    Serial.println(serialData);
 }
 
 String get_write_cmd_index_data(byte &index, bool &isContinue)
@@ -307,10 +299,7 @@ String get_write_cmd_index_data(byte &index, bool &isContinue)
         isContinue = false;
         return "";
     }
-    else
-    {
-        isContinue = true;
-    }
+    isContinue = true;
     index = (10 * (((byte)serialData[1]) - 48) + ((byte)serialData[2] - 48));
     // Serial.println(index);
     if (!(index >= 0 && index < 45))
@@ -321,12 +310,14 @@ String get_write_cmd_index_data(byte &index, bool &isContinue)
         ResetBoard();
         return "";
     }
-    String data;
-    for (byte i = 0; i < (sizeof(serialData) / sizeof(char)); i++)
+    String data = "";
+    for (byte i = 0; i < serialData.length() - 1; i++)
+    {
         if (i > 2)
         {
-            data[i - 3] = serialData[i];
+            data += serialData[i];
         }
+    }
     return data;
 }
 
@@ -414,6 +405,6 @@ void dump_string_array(byte *buffer, byte bufferSize)
 /*********** Ardunio resetter **************/
 void ResetBoard()
 {
-    Serial.print(F("/*Resetting*/"));
+    Serial.println(F("/*Resetting*/"));
     digitalWrite(arduReset, LOW);
 }
